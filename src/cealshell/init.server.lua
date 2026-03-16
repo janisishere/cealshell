@@ -15,7 +15,7 @@ require(script.initiate)(plugin)
 LogService.MessageOut:Connect(function(str: string, messageType: Enum.MessageType) 
 	if messageType ~= Enum.MessageType.MessageOutput then return end
 
-	local target = "> --i "
+	local target = "> --c "
 	if str:sub(1, target:len()) == target then
 		str = str:sub(target:len()+1)
 	else
@@ -30,4 +30,4 @@ end)
 
 
 --
-print("[Iridium] Loaded in", math.floor((tick() - start)*10^3) .."ms")
+print("[Cealshell] Loaded in", math.floor((tick() - start)*10^3) .."ms")

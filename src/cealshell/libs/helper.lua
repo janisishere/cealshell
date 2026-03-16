@@ -31,7 +31,7 @@ function helper:doesArgExist(argName:string, args:{types.args})
     return nil
 end
 
-function helper:ensureIridiumPath(_shared: boolean?)
+function helper:ensureCealshellPath(_shared: boolean?)
 	local f
 	if _shared then
 		f = ReplicatedStorage:FindFirstChild(".iridium")
