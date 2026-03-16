@@ -3,11 +3,11 @@ return function(plugin: Plugin)
 	local LogService = game:GetService("LogService")
 	
 	--// Locals
-	local signer = "iridium"
+	local signer = "Cealshell"
 
 	--// Folders
-	local iridium = script.Parent
-	local libs = iridium:FindFirstChild("libs")
+	local Cealshell = script.Parent
+	local libs = Cealshell:FindFirstChild("libs")
 
 	--// Modules
 	local registry = require(libs:FindFirstChild("registry"))
@@ -17,17 +17,17 @@ return function(plugin: Plugin)
 	--// Settings
 	local remotes = {}
 	local trustedremotes = {
-		"https://iridium.xlch.dev/",
+		"https://Cealshell.xlch.dev/",
 		-- Trusted Partners will be added here in the future.
 	}
 	
 	local function saveRemotes()
-		plugin:SetSetting("iridium:remotes", remotes)
+		plugin:SetSetting("cealshell:remotes", remotes)
 	end
 	
-	local firstTime = plugin:GetSetting("iridium:startup") or false
+	local firstTime = plugin:GetSetting("cealshell:startup") or false
 	if firstTime ~= true then
-		plugin:SetSetting("iridium:startup", true)
+		plugin:SetSetting("cealshell:startup", true)
 		
 		for _, remote in trustedremotes do
 			if not table.find(remotes, remote) then
@@ -36,7 +36,7 @@ return function(plugin: Plugin)
 		end
 		saveRemotes()
 	end
-	local savedRemotes = plugin:GetSetting("iridium:remotes")
+	local savedRemotes = plugin:GetSetting("cealshell:remotes")
 	if savedRemotes and typeof(savedRemotes) == "table" then
 		for _, x in pairs(savedRemotes) do
 			table.insert(remotes, x)
@@ -48,7 +48,7 @@ return function(plugin: Plugin)
 	--i help
 	registry:register("help", nil, function()
 		print(string.rep("\n", 2))
-		print("iridium() 2026 ©")
+		print("cealshell() 2026 ©")
 		print("made by janis under Flux Studio")
 		print("--------------------------------")
 		for cmd:string, data:types.regtable in pairs(registry.commands) do
@@ -72,7 +72,7 @@ return function(plugin: Plugin)
 		local subName = args[2]
 
 		if not cmdName then
-			warn("[Iridium] Usage: manual <command> [subcommand]")
+			warn("[Cealshell] Usage: manual <command> [subcommand]")
 			return
 		end
 
@@ -154,7 +154,7 @@ return function(plugin: Plugin)
 
 	--i about
 	registry:register("about", nil, function()
-		print("iridum() 2026 ©")
+		print("cealshell() 2026 ©")
 		print("------------")
 		print("developed by janis")
 		print("roblox: @the_h0lysandwich")
@@ -162,7 +162,7 @@ return function(plugin: Plugin)
 		print("------------")
 		print("published under Flux Studio")
 		print("discord: .gg/Vpsyd59r5X")
-	end, "Credits & Contacts for Iridium.")
+	end, "Credits & Contacts for Cealshell.")
 
 	--i rbxpackage
 	local pacAwaiting = false
@@ -174,12 +174,12 @@ return function(plugin: Plugin)
 			print("No action given.")
 
 		elseif table.find({"i", "install", "add"}, action) then
-			local i = helper:ensureIridiumPath()
+			local i = helper:ensureCealshellPath()
 			print("Looking for package(s) in remotes...")
 			print("THIS IS UNFINISHED; NO ACTION CONTINUED")
 
 		elseif table.find({"rm", "uinstall", "uninstall", "remove"}, action) then
-			local i = helper:ensureIridiumPath()
+			local i = helper:ensureCealshellPath()
 			print("Filtering for package(s) installed...")
 			
 			local _shared = helper:doesArgExist("s", cArgs)
@@ -239,7 +239,7 @@ return function(plugin: Plugin)
 			end
 			
 		elseif action == "list" then
-			local i = helper:ensureIridiumPath()
+			local i = helper:ensureCealshellPath()
 			local p = args[2]
 			for _, x in i:GetChildren() do
 				if p then
@@ -254,7 +254,7 @@ return function(plugin: Plugin)
 		else
 			print("Unknown subcommand.")
 		end
-	end, "Packet Manager for Iridium.", {
+	end, "Packet Manager for Cealshell.", {
 		[1] = "Manages packages from configured remotes.",
 
 		["install"] = {
