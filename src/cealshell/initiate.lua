@@ -19,7 +19,7 @@ return function(plugin: Plugin)
 	--// Settings
 	local remotes = {}
 	local trustedremotes = {
-		"https://Cealshell.xlch.dev/",
+		"https://api.cealshell.dev/",
 		-- Trusted Partners will be added here in the future.
 	}
 	
