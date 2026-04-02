@@ -4,25 +4,51 @@ local HttpService = game:GetService("HttpService")
 --// Globals
 local packager = {}
 
-function packager:parse(package: string)
-    local s1 = package:split("/")
-    assert(#s1 >= 2, "Invalid address")
+function packager:parse(package: string, remoteUrl: string?)
+    remoteUrl = remoteUrl or "https://api.cealshell.dev"
 
-    local s2 = s1[2]:split(":")
-    assert(#s2 >= 2, "Missing ':'")
+    -- Normalize remote URL: remove trailing slash if present
+    if remoteUrl:sub(-1) == "/" then
+        remoteUrl = remoteUrl:sub(1, -2)
+    end
 
-    local s3 = s2[2]:split("@")
-    assert(#s3 >= 2, "Missing '@'")
+    -- Check if package address contains "/" (full URL format)
+    if package:find("/") then
+        local s1 = package:split("/")
+        assert(#s1 >= 2, "Invalid address")
 
-    local url = s1[1]
-    local author = s2[1]
-    local package = s3[1]
-    local version = s3[2]
+        local s2 = s1[2]:split(":")
+        assert(#s2 >= 2, "Missing ':'")
 
-    local final = ("http://%s/%s/%s/%s"):format(url, author, package, version)
-    print(final)
+        local s3 = s2[2]:split("@")
+        assert(#s3 >= 2, "Missing '@'")
 
-    return final
+        local url = s1[1]
+        local author = s2[1]
+        local packageName = s3[1]
+        local version = s3[2]
+
+        local final = ("http://%s/%s/%s/%s"):format(url, author, packageName, version)
+        return final
+    else
+        -- Simplified format: author:package[@version]
+        local parts = package:split(":")
+        assert(#parts >= 2, "Invalid format. Use author:package or author:package@version")
+
+        local author = parts[1]
+        local restParts = table.concat(parts, ":", 2):split("@")
+        local packageName = restParts[1]
+        local version = restParts[2] or "latest"
+
+        -- Build URL from remote, appending /api/packages if not already present
+        local apiPath = "/api/packages"
+        if not remoteUrl:find(apiPath) then
+            remoteUrl = remoteUrl .. apiPath
+        end
+        
+        local final = remoteUrl .. "/" .. author .. "/" .. packageName .. "/" .. version
+        return final
+    end
 end
 
 function packager:retrieve(address: string)
@@ -37,8 +63,8 @@ function packager:retrieve(address: string)
 end
 
 function packager:build(package: {any}, parent: Instance)
-    if not package or not package.instances then
-        warn("Invalid package data")
+    if not package or not package.instances or #package.instances == 0 then
+        warn("Invalid package data - no instances found")
         return
     end
     

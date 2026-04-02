@@ -169,6 +169,36 @@ return function(plugin: Plugin)
 	--i rbxpackage
 	local pacAwaiting = false
 	local pacData = {}
+	local pacSharedMode = false
+	
+	-- Helper function to handle pending confirmations
+	local function handleConfirmation(confirmed: boolean)
+		if not pacAwaiting then
+			print("No pending action to confirm.")
+			return
+		end
+		
+		if confirmed then
+			if pacAwaiting == "install" then
+				local i = helper:ensureCealshellPath(pacSharedMode)
+				for _, pkg in pairs(pacData) do
+					packager:build(pkg.data, i)
+					print("Successfully installed " .. pkg.name)
+				end
+			elseif pacAwaiting == "uninstall" then
+				for _, pkg in pairs(pacData) do
+					pkg:Destroy()
+					print("Uninstalled " .. pkg.Name)
+				end
+			end
+		else
+			print("Operation cancelled.")
+		end
+		
+		pacAwaiting = false
+		pacData = {}
+		pacSharedMode = false
+	end
 	
 	registry:register("rbxpackage", nil, function(args:{types.args}, cArgs:{string})
 		-- Handle pending confirmations first
@@ -177,26 +207,10 @@ return function(plugin: Plugin)
 			local deny = helper:doesArgExist("n", cArgs)
 			
 			if confirm then
-				if pacAwaiting == "install" then
-					local _shared = helper:doesArgExist("s", cArgs)
-					local i = helper:ensureCealshellPath(_shared)
-					for _, pkg in pairs(pacData) do
-						packager:build(pkg.data, i)
-						print("Successfully installed " .. pkg.name)
-					end
-				elseif pacAwaiting == "uninstall" then
-					for _, pkg in pairs(pacData) do
-						pkg:Destroy()
-						print("Uninstalled " .. pkg.Name)
-					end
-				end
-				pacAwaiting = false
-				pacData = {}
+				handleConfirmation(true)
 				return
 			elseif deny then
-				print("Operation cancelled.")
-				pacAwaiting = false
-				pacData = {}
+				handleConfirmation(false)
 				return
 			end
 		end
@@ -220,27 +234,42 @@ return function(plugin: Plugin)
 				if typeof(packageName) ~= "string" then continue end
 				
 				local retrievedPackage = nil
-				local isAbsolute = packageName:find(":") ~= nil
+				local hasUrl = packageName:find("/") ~= nil
+				local hasAuthor = packageName:find(":") ~= nil
 				
-				if isAbsolute then
-					-- Package address is absolute (contains host:port or similar), parse it directly
+				if hasUrl then
+					-- Full address format: url/author:package@version
 					local packageUrl = packager:parse(packageName)
 					local packageData = packager:retrieve(packageUrl)
 					if packageData then
 						local success, parsed = pcall(HttpService.JSONDecode, HttpService, packageData)
 						if success and parsed then
-							retrievedPackage = parsed
+							-- Extract data field if it exists (API response format)
+							retrievedPackage = parsed.data or parsed
+						end
+					end
+				elseif hasAuthor then
+					-- Simplified format: author:package or author:package@version
+					-- Use the first trusted remote
+					local packageUrl = packager:parse(packageName, remotes[1] or "https://api.cealshell.dev")
+					local packageData = packager:retrieve(packageUrl)
+					if packageData then
+						local success, parsed = pcall(HttpService.JSONDecode, HttpService, packageData)
+						if success and parsed then
+							-- Extract data field if it exists (API response format)
+							retrievedPackage = parsed.data or parsed
 						end
 					end
 				else
-					-- Package name is relative, try each remote
+					-- Package name only, search all remotes
 					for _, remote in pairs(remotes) do
 						local packageUrl = remote .. packageName
 						local packageData = packager:retrieve(packageUrl)
 						if packageData then
 							local success, parsed = pcall(HttpService.JSONDecode, HttpService, packageData)
 							if success and parsed then
-								retrievedPackage = parsed
+								-- Extract data field if it exists (API response format)
+								retrievedPackage = parsed.data or parsed
 								break
 							end
 						end
@@ -258,8 +287,11 @@ return function(plugin: Plugin)
 				-- Show preview of what will be installed
 				print("\nPackages to install:")
 				for _, pkg in pairs(toInstall) do
-					print("  - " .. pkg.name)
-					if pkg.data.dependencies and typeof(pkg.data.dependencies) == "table" then
+					print("  - " .. (pkg.name or "UNKNOWN"))
+					if pkg.data and pkg.data.instances then
+						print("    └─ " .. #pkg.data.instances .. " instances")
+					end
+					if pkg.data and pkg.data.dependencies and typeof(pkg.data.dependencies) == "table" then
 						for _, dep in pairs(pkg.data.dependencies) do
 							print("    └─ " .. dep)
 						end
@@ -275,9 +307,10 @@ return function(plugin: Plugin)
 					end
 				else
 					-- Wait for confirmation
-					print("Continue? [--y/--n]")
+				print("Type --c --y to confirm or --c --n to cancel")
 					pacAwaiting = "install"
 					pacData = toInstall
+					pacSharedMode = _shared
 				end
 			end
 
@@ -319,9 +352,10 @@ return function(plugin: Plugin)
 					end
 				else
 					-- Wait for confirmation
-					print("Continue? [--y/--n]")
+				print("Type --c --y to confirm or --c --n to cancel")
 					pacAwaiting = "uninstall"
 					pacData = uninstalling
+					pacSharedMode = _shared
 				end
 			else
 				warn("No packages found matching the given names")
@@ -406,6 +440,16 @@ return function(plugin: Plugin)
 			"lists all installed packages"
 		}
 	}, signer):alias({"rbxp", "pacman"})
+
+	--i confirm (y/yes)
+	registry:register("y", nil, function()
+		handleConfirmation(true)
+	end, "Confirms the pending action.", nil, signer):alias("yes")
+
+	--i deny (n/no)
+	registry:register("n", nil, function()
+		handleConfirmation(false)
+	end, "Cancels the pending action.", nil, signer):alias("no")
 
 	--i clear
 	registry:register("clear", nil, function()
