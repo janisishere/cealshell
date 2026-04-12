@@ -1,35 +1,14 @@
 local libs = script.Parent
 
 --// Modules
-local cryptography = require(libs:FindFirstChild("cryptography"))
 local types = require(libs:FindFirstChild("types"))
-
-local Mldsa = cryptography.Verification.MlDSA
 
 --// Globals
 local reg = {}
 reg.commands = {} :: types.regtable
 reg.callevent = Instance.new("BindableEvent", script)
 
---// Locals
-local session = "Unknown"
-local strictSigners = {
-	["cealshell"] = {
-		"cealshell",
-	}
-}
-
-function reg:sign(_session, message, signature, origin: Instance)
-	local IsValid = Mldsa.ML_DSA_65.Verify(message, buffer.fromstring(origin:GetAttribute("pub")), buffer.fromstring(_session), signature)
-	if origin:IsAncestorOf(libs.Parent.submodules) then return end
-	session = _session
-end
-
 function reg:register(command:string, args:{types.args}?, callback: (args:{types.args}, cArgs:{string}) -> (), description:string?, manual:string|{string}?, signer:string?)
-	if strictSigners[signer] ~= nil and not table.find(strictSigners[signer], session) then
-		warn(("[Cealshell] Session '%s' does not have sufficient privileges to access signature '%s'."):format(session, signer))
-		return
-	end
 	reg.commands[command] = {
 		arguments=args,
 		callback=callback,
