@@ -16,7 +16,8 @@ return function(plugin: Plugin)
 	local helper = require(libs:FindFirstChild("helper"))
 	local packager = require(libs:FindFirstChild("packager"))
 
-	registry:sign(script.UniqueId)
+	script:SetAttribute("uid", HttpService:GenerateGUID(false))
+	registry:sign(script:GetAttribute("uid"))
 
 	--// Settings
 	local remotes = {}

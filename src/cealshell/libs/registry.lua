@@ -15,7 +15,7 @@ local strictSigners = {
 }
 
 function reg:sign(uid: string)
-	if uid == script.Parent.Parent.initiate.UniqueId then
+	if uid == script.Parent.Parent.initiate:GetAttribute("uid") then
 		session = "cealshell"
 	end
 end
