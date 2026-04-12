@@ -15,9 +15,23 @@ return function(plugin: Plugin)
 	local types = require(libs:FindFirstChild("types"))
 	local helper = require(libs:FindFirstChild("helper"))
 	local packager = require(libs:FindFirstChild("packager"))
+	local cryptography = require(libs:FindFirstChild("cryptography"))
 
-	script:SetAttribute("uid", HttpService:GenerateGUID(false))
-	registry:sign(script:GetAttribute("uid"))
+	--// Signature
+	local Mldsa = cryptography.Verification.MlDSA
+	local CSPRNG = cryptography.Utilities.CSPRNG
+
+	local message = HttpService:GenerateGUID(false)
+	local bmessage = buffer.fromstring(message)
+	local rseed = CSPRNG.RandomBytes(32)
+	local pubkey, seckey = Mldsa.ML_DSA_65.GenerateKeys()
+	local signature = buffer.create(Mldsa.ML_DSA_65.SigByteLen)
+	Mldsa.ML_DSA_65.Sign(bmessage, rseed, seckey, buffer.fromstring("cealshell"), signature)
+
+	script:SetAttribute("id", message)
+	script:SetAttribute("pub", buffer.tostring(pubkey))
+
+	registry:sign("cealshell", bmessage, signature, script)
 
 	--// Settings
 	local remotes = {}

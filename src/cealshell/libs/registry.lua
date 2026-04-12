@@ -1,5 +1,10 @@
+local libs = script.Parent
+
 --// Modules
-local types = require(script.Parent:FindFirstChild("types"))
+local cryptography = require(libs:FindFirstChild("cryptography"))
+local types = require(libs:FindFirstChild("types"))
+
+local Mldsa = cryptography.Verification.MlDSA
 
 --// Globals
 local reg = {}
@@ -14,10 +19,10 @@ local strictSigners = {
 	}
 }
 
-function reg:sign(uid: string)
-	if uid == script.Parent.Parent.initiate:GetAttribute("uid") then
-		session = "cealshell"
-	end
+function reg:sign(_session, message, signature, origin: Instance)
+	local IsValid = Mldsa.ML_DSA_65.Verify(message, buffer.fromstring(origin:GetAttribute("pub")), buffer.fromstring(_session), signature)
+	if origin:IsAncestorOf(libs.Parent.submodules) then return end
+	session = _session
 end
 
 function reg:register(command:string, args:{types.args}?, callback: (args:{types.args}, cArgs:{string}) -> (), description:string?, manual:string|{string}?, signer:string?)
