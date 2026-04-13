@@ -199,7 +199,7 @@ function submodules:load()
     end
     ]]
 
-    local funcs = getTopLevelFunctions(initialSource:sub(#identificator+6))--#pubKey+6))
+    local funcs = getTopLevelFunctions(initialSource:sub(#identificator+2))--#pubKey+6))
         :gsub("function%s+(%w+)", "function submodule.%1")
 
     local source =
