@@ -173,13 +173,15 @@ return function(plugin: Plugin)
 			print("No action given.")
 
 		elseif table.find({"i", "install", "add"}, action) then
-			local _shared = helper:doesArgExist("s", cArgs)
-			local autoConfirm = helper:doesArgExist("y", cArgs)
+			local _shared, i_shared = helper:doesArgExist("s", cArgs)
+			local autoConfirm, i_autoConfirm = helper:doesArgExist("y", cArgs)
 			local i = helper:ensureCealshellPath(_shared)
 			print("Looking for package(s) in remotes...")
 			
 			local lookingArgs = table.clone(args)
 			lookingArgs[1] = nil
+			lookingArgs[i_autoConfirm] = nil
+			lookingArgs[i_shared] = nil
 			
 			local toInstall = {}
 			
