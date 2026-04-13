@@ -51,6 +51,12 @@ function helper:ensureCealshellPath(_shared: boolean?)
 			f.Name = ".cealshell"
 		end
 	end
+
+	if not f:FindFirstChild("src") then
+		local src = Instance.new("Folder", f)
+		src.Name = "src"
+	end
+
 	return f
 end
 
