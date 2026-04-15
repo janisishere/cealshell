@@ -30,6 +30,7 @@ return function(plugin: Plugin)
 	local firstTime = plugin:GetSetting("cealshell:startup") or false
 	if firstTime ~= true then
 		plugin:SetSetting("cealshell:startup", true)
+		plugin:SetSetting("cealshell:advanced", false)
 		
 		for _, remote in trustedremotes do
 			if not table.find(remotes, remote) then
@@ -154,7 +155,7 @@ return function(plugin: Plugin)
 		end
 	end, "Shows more information about a command.", nil, signer):alias("man")
 
-	--i about
+	--c about
 	registry:register("about", nil, function()
 		print("cealshell() 2026 ©")
 		print("------------")
@@ -164,7 +165,36 @@ return function(plugin: Plugin)
 		print("------------")
 		print("published under Flux Studio")
 		print("discord: .gg/Vpsyd59r5X")
-	end, "Credits & Contacts for Cealshell.")
+	end, "Credits & Contacts for Cealshell.", nil, signer)
+
+	--c config
+	registry:register("config", nil, function(args:{types.args}, cArgs:{string})
+		local whitelist = {
+			"cealshell:advanced",
+		}
+		local function format(x: string)
+			if x == "true" then
+				return true
+			elseif x == "false" then
+				return false
+			elseif tostring(tonumber(x)) == x then
+				return tonumber(x)
+			else
+				return x
+			end
+		end
+		if plugin:GetSetting("cealshell:advanced") == true then
+			plugin:SetSetting(args[1], format(args[2]))
+		else
+			if table.find(whitelist, args[1]) then
+				plugin:SetSetting(args[1], format(args[2]))
+			else
+				warn("[Cealshell] This configuration is locked behind advanced mode. Use '--c config cealshell:advanced true' to enable it.")
+				return
+			end
+		end
+		print(("[Cealshell] Successfully set '%s' to '%s' (%s)."):format(args[1], args[2], typeof(args[2])))
+	end, nil, nil, signer):alias("cfg")
 
 	--c rbxpackage
 	registry:register("rbxpackage", nil, function(args:{types.args}, cArgs:{string})
