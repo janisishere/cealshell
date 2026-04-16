@@ -214,7 +214,6 @@ return function(plugin: Plugin)
 		elseif table.find({"i", "install", "add"}, action) then
 			local _shared, i_shared = helper:doesArgExist("s", cArgs)
 			local autoConfirm, i_autoConfirm = helper:doesArgExist("y", cArgs)
-			local i = helper:ensureCealshellPath(_shared)
 			print("Looking for package(s) in remotes...")
 			
 			local lookingArgs = table.clone(args)
@@ -222,85 +221,7 @@ return function(plugin: Plugin)
 			lookingArgs[i_autoConfirm] = nil
 			lookingArgs[i_shared] = nil
 			
-			local toInstall = {}
-			
-			for _, packageName in pairs(lookingArgs) do
-				if typeof(packageName) ~= "string" then continue end
-				
-				local retrievedPackage = nil
-				local hasUrl = packageName:find("/") ~= nil
-				local hasAuthor = packageName:find(":") ~= nil
-				
-				if hasUrl then
-					-- Full address format: url/author:package@version
-					local packageUrl = packager:parse(packageName)
-					local packageData = packager:retrieve(packageUrl)
-					if packageData then
-						local success, parsed = pcall(HttpService.JSONDecode, HttpService, packageData)
-						if success and parsed then
-							-- Extract data field if it exists (API response format)
-							retrievedPackage = parsed.data or parsed
-						end
-					end
-				elseif hasAuthor then
-					-- Simplified format: author:package or author:package@version
-					-- Use the first trusted remote
-					local packageUrl = packager:parse(packageName, remotes[1] or "https://api.cealshell.dev")
-					local packageData = packager:retrieve(packageUrl)
-					if packageData then
-						local success, parsed = pcall(HttpService.JSONDecode, HttpService, packageData)
-						if success and parsed then
-							-- Extract data field if it exists (API response format)
-							retrievedPackage = parsed.data or parsed
-						end
-					end
-				else
-					-- Package name only, search all remotes
-					for _, remote in pairs(remotes) do
-						local packageUrl = remote .. packageName
-						local packageData = packager:retrieve(packageUrl)
-						if packageData then
-							local success, parsed = pcall(HttpService.JSONDecode, HttpService, packageData)
-							if success and parsed then
-								-- Extract data field if it exists (API response format)
-								retrievedPackage = parsed.data or parsed
-								break
-							end
-						end
-					end
-				end
-				
-				if retrievedPackage then
-					table.insert(toInstall, {name = packageName, data = retrievedPackage})
-				else
-					warn("Could not find package " .. packageName .. " in any remote")
-				end
-			end
-			
-			if #toInstall > 0 then
-				-- Show preview of what will be installed
-				print("\nPackages to install:")
-				for _, pkg in pairs(toInstall) do
-					print("  - " .. (pkg.name or "UNKNOWN"))
-					if pkg.data and pkg.data.instances then
-						print("    └─ " .. #pkg.data.instances .. " instances")
-					end
-					if pkg.data and pkg.data.dependencies and typeof(pkg.data.dependencies) == "table" then
-						for _, dep in pairs(pkg.data.dependencies) do
-							print("    └─ " .. dep)
-						end
-					end
-				end
-				print()
-				
-				if autoConfirm then
-					-- Auto-confirm with --y flag
-					for _, pkg in pairs(toInstall) do
-						packager:build(pkg.data, i)
-						print("Successfully installed " .. pkg.name)
-					end
-				end
-			end
+			pmanager:install(_shared, autoConfirm, remotes, lookingArgs)
 
 		elseif table.find({"rm", "uinstall", "uninstall", "remove"}, action) then
 			local i = helper:ensureCealshellPath()
