@@ -26,7 +26,7 @@ function ix:register(name: string, source: Instance) : Configuration
     elseif typeof(source) == "Instance" and source:IsA("ModuleScript") then
         idx.Source = ([[return require(script.Parent.src.%s)]]):format(source.Name)
     else
-        warn("[Cealshell] Unable to register '%s', no valid API found.")
+        warn(("[Cealshell] Unable to register '%s', no valid API found."):format(name))
     end
 
     local idxv = Instance.new("ObjectValue", x)

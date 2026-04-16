@@ -1,6 +1,12 @@
 local submodules = {}
 local folder = script.Parent.Parent:FindFirstChild("submodules")
 
+if not folder then
+    warn("[Cealshell] Submodules folder not found. Creating placeholder...")
+    folder = Instance.new("Folder")
+    folder.Name = "submodules"
+end
+
 export type submodule = {
     key: string,
 	source: string,
@@ -45,11 +51,13 @@ local function stripComments(src)
             local q = src:sub(i,i)
             local j = i+1
             while j <= #src do
-                if src:sub(j,j) == "\\" then j = j + 2
+                if src:sub(j,j) == "\\" then 
+                    j = j + 2
+                    if j > #src then break end
                 elseif src:sub(j,j) == q then break
                 else j = j + 1 end
             end
-            result[#result+1] = src:sub(i, j)
+            result[#result+1] = src:sub(i, math.min(j, #src))
             i = j + 1
         else
             result[#result+1] = src:sub(i, i)
@@ -73,12 +81,14 @@ local function getTopLevelFunctions(src)
             local q = ch
             local j = i + 1
             while j <= #cleaned do
-                if cleaned:sub(j,j) == "\\" then j = j + 2
+                if cleaned:sub(j,j) == "\\" then 
+                    j = j + 2
+                    if j > #cleaned then break end
                 elseif cleaned:sub(j,j) == q then break
                 else j = j + 1 end
             end
             if depth > 0 then
-                result[#result+1] = cleaned:sub(i, j)
+                result[#result+1] = cleaned:sub(i, math.min(j, #cleaned))
             end
             i = j + 1
 

@@ -28,7 +28,14 @@ function packager:parse(package: string, remoteUrl: string?)
         local packageName = s3[1]
         local version = s3[2]
 
-        local final = ("http://%s/%s/%s/%s"):format(url, author, packageName, version)
+        -- Preserve scheme from URL or default to https
+        local scheme = "https"
+        if url:match("^https?://") then
+            scheme = url:match("^(https?)://")
+            url = url:match("^https?://(.*)$")
+        end
+        
+        local final = ("%s://%s/%s/%s/%s"):format(scheme, url, author, packageName, version)
         return final
     else
         -- Simplified format: author:package[@version]
@@ -42,7 +49,7 @@ function packager:parse(package: string, remoteUrl: string?)
 
         -- Build URL from remote, appending /api/packages if not already present
         local apiPath = "/api/packages"
-        if not remoteUrl:find(apiPath) then
+        if not remoteUrl:match(apiPath .. "/?$") then
             remoteUrl = remoteUrl .. apiPath
         end
         
@@ -101,7 +108,7 @@ function packager:build(package: {any}, parent: Instance)
     
     if type(package.instances) == "table" then
         for _, instanceData in ipairs(package.instances) do
-            buildInstance(instanceData, parent)
+            return buildInstance(instanceData, parent)
         end
     end
 end
