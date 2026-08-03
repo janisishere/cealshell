@@ -27,7 +27,7 @@ local success, isEdit = pcall(function(...)
 	return RunService:IsEdit()
 end)
 
-if not (success or isEdit) then return end
+if not success or not isEdit then return end
 
 --// Folders
 local libs = script:FindFirstChild("libs")
