@@ -23,7 +23,11 @@ local LogService = game:GetService("LogService")
 local RunService = game:GetService("RunService")
 local StudioService = game:GetService("StudioService")
 
-if not RunService:IsEdit() then return end
+local success, isEdit = pcall(function(...)
+	return RunService:IsEdit()
+end)
+
+if not success or isEdit then return end
 
 --// Folders
 local libs = script:FindFirstChild("libs")
