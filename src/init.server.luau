@@ -76,9 +76,9 @@ if plugin:GetSetting("cealshell:no_local_warning") == nil then
 	plugin:SetSetting("cealshell:no_local_warning", false)
 end
 
--- Command output is saved, not printed (see libs/log). Mirroring puts it back in
--- the Output window as well; the setting is owned by `logs mirror on|off`.
-log.setMirror(plugin:GetSetting("cealshell:log_mirror") == true)
+-- Command output is saved (see libs/log) *and* printed, unless the user has
+-- turned mirroring off. The setting is owned by `logs mirror on|off`.
+log.setMirror(plugin:GetSetting("cealshell:log_mirror") ~= false)
 
 -- Delete legacy settings
 if plugin:GetSetting("cealshell:remotes") ~= nil then
@@ -142,9 +142,32 @@ local function setupCommandle(api: Instance)
 		return
 	end
 
-	-- Every view we push is one level deep, so "go back" is always a single pop.
+	-- A flow can stack several views: picking a package to remove pushes a list,
+	-- the pending operation pushes a confirm step, and confirming pushes the
+	-- result on top of that. Commandle pops one view per request, so track how
+	-- deep we are and unwind all of it — otherwise "go back" from a result view
+	-- lands on the confirm step it just answered.
+	local depth = 0
+
+	local function push(entries: { any })
+		depth += 1
+		pushRequest:Fire(entries)
+	end
+
 	local function goBack()
-		popRequest:Fire()
+		for _ = 1, math.max(depth, 1) do
+			popRequest:Fire()
+		end
+		depth = 0
+	end
+
+	-- Entry points reset the count: the user may have escaped out of a flow
+	-- rather than backing out of it, which leaves `depth` stale.
+	local function root(callback: () -> ()): () -> ()
+		return function()
+			depth = 0
+			callback()
+		end
 	end
 
 	-- Show a result as a read-only list in the palette: selecting any line (or
@@ -157,7 +180,7 @@ local function setupCommandle(api: Instance)
 		end
 
 		task.delay(FEEDBACK_DELAY, function()
-			pushRequest:Fire(entries)
+			push(entries)
 		end)
 	end
 
@@ -183,7 +206,7 @@ local function setupCommandle(api: Instance)
 		end
 
 		task.delay(FEEDBACK_DELAY, function()
-			pushRequest:Fire({
+			push({
 				{
 					title = ("Confirm pending %s — the full plan is under 'cealshell: Logs'"):format(kind),
 					callback = function()
@@ -255,7 +278,7 @@ local function setupCommandle(api: Instance)
 
 		table.insert(entries, 1, { title = "Select a package to remove:", callback = function() end })
 		table.insert(entries, { title = "Return", callback = goBack })
-		pushRequest:Fire(entries)
+		push(entries)
 	end
 
 	local function listPackages()
@@ -316,7 +339,7 @@ local function setupCommandle(api: Instance)
 		})
 		table.insert(entries, { title = "Return", callback = goBack })
 
-		pushRequest:Fire(entries)
+		push(entries)
 	end
 
 	-- The registry already carries every command's description + manual, so the
@@ -363,7 +386,7 @@ local function setupCommandle(api: Instance)
 
 		table.insert(entries, 1, { title = "Select a command for its manual:", callback = function() end })
 		table.insert(entries, { title = "Return", callback = goBack })
-		pushRequest:Fire(entries)
+		push(entries)
 	end
 
 	local function runCommand()
@@ -416,46 +439,48 @@ local function setupCommandle(api: Instance)
 		})
 	end
 
+	-- Every callback here starts from the palette's own list, so each is wrapped
+	-- in `root` to zero the view counter that `goBack` unwinds.
 	createCommands:Fire("main", {
 		{
 			title = "cealshell: Install Package",
-			callback = function()
+			callback = root(function()
 				promptInstall("", {})
-			end,
+			end),
 		},
 		{
 			title = "cealshell: Install Package (Shared)",
-			callback = function()
+			callback = root(function()
 				promptInstall(" into ReplicatedStorage", { "-s" })
-			end,
+			end),
 		},
 		{
 			title = "cealshell: Install Package (into Selection)",
-			callback = function()
+			callback = root(function()
 				promptInstall(" into the selected instance", { "-i" })
-			end,
+			end),
 		},
 		{
 			title = "cealshell: Update All Packages",
-			callback = function()
+			callback = root(function()
 				dispatch("update", { "-a" }, function()
 					reportPending("No updates available — pick 'cealshell: Logs' for details.")
 				end)
-			end,
+			end),
 		},
-		{ title = "cealshell: Remove Package", callback = chooseAndRemove },
-		{ title = "cealshell: List Installed Packages", callback = listPackages },
+		{ title = "cealshell: Remove Package", callback = root(chooseAndRemove) },
+		{ title = "cealshell: List Installed Packages", callback = root(listPackages) },
 		{
 			title = "cealshell: Pending Operation (Confirm / Cancel)",
-			callback = function()
+			callback = root(function()
 				reportPending("No pending operation.")
-			end,
+			end),
 		},
-		{ title = "cealshell: Logs", callback = showLogs },
-		{ title = "cealshell: Set Remote", callback = setRemote },
-		{ title = "cealshell: Run Command", callback = runCommand },
-		{ title = "cealshell: Commands & Manuals", callback = browseCommands },
-		{ title = "cealshell: Status", callback = status },
+		{ title = "cealshell: Logs", callback = root(showLogs) },
+		{ title = "cealshell: Set Remote", callback = root(setRemote) },
+		{ title = "cealshell: Run Command", callback = root(runCommand) },
+		{ title = "cealshell: Commands & Manuals", callback = root(browseCommands) },
+		{ title = "cealshell: Status", callback = root(status) },
 	})
 
 	log.info("Commandle detected — palette commands registered.")
@@ -480,9 +505,7 @@ for _, child in StudioService:GetChildren() do
 end
 
 --
--- The two lines below are the only output Cealshell puts in the Output window
--- unprompted: everything a command produces is saved and shown by `--c logs`.
-log.echo("info", ("Loaded %s in %dms — command output is saved; run '--c logs' to read it."):format(
+log.echo("info", ("Loaded %s in %dms — output is saved too; run '--c logs' to read it back."):format(
 	VERSION,
 	math.floor((tick() - start) * 10 ^ 3)
 ))

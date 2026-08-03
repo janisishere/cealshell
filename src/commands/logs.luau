@@ -96,7 +96,7 @@ return {
 	description = "Show saved command output.",
 	manual = {
 		"logs [count]",
-		"Cealshell saves its output instead of printing it. This prints it back.",
+		"Cealshell saves everything it prints. This replays it, oldest line first.",
 		"With no count, the last " .. DEFAULT_COUNT .. " lines are shown.",
 		"",
 		"Flags:",
@@ -106,7 +106,7 @@ return {
 		"",
 		"Subcommands:",
 		"  logs clear           Discard the saved lines",
-		"  logs mirror on|off   Also print output as it happens (persists)",
+		"  logs mirror on|off   Print output as it happens as well (on by default)",
 		"",
 		"The buffer keeps the newest 500 lines and empties when Studio restarts.",
 	},

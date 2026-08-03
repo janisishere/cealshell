@@ -2,11 +2,13 @@
 	log.luau
 	Buffered output for the CLI.
 
-	Nothing a command "prints" goes to Studio's Output window any more. Every line
-	is recorded here with a level and a timestamp, and shown on demand by the
-	`logs` command (or the "cealshell: Logs" entry in Commandle). Studio's Output
-	is shared with the whole place, so a package install no longer buries whatever
-	the user was actually watching.
+	Every line a command produces is recorded here with a level and a timestamp,
+	so it can be read back later with the `logs` command (or the "cealshell: Logs"
+	entry in Commandle) instead of being lost to whatever else scrolled past in
+	Studio's shared Output window.
+
+	Recorded lines are printed as they happen too — see `mirror`, which is on
+	unless the user turns it off.
 
 	The buffer lives in memory only: it starts empty each time the plugin loads,
 	and keeps the newest LIMIT lines.
@@ -37,10 +39,10 @@ local WARNING_LEVELS: { [string]: boolean } = {
 
 local log = {}
 
--- When true, entries are printed as they happen *as well as* saved — the old
--- behaviour. Off by default; toggled by `logs mirror on` / the
--- `cealshell:log_mirror` setting.
-log.mirror = false
+-- When true, entries are printed as they happen *as well as* saved, so a command
+-- still answers in the Output window. On by default; `logs mirror off` (the
+-- `cealshell:log_mirror` setting) makes the log the only place output lands.
+log.mirror = true
 
 local buffer: { entry } = {}
 -- How many lines the LIMIT has pushed out, so the viewer can say so.
@@ -120,10 +122,14 @@ end
 
 -- Console ---------------------------------------------------------------------
 
--- Record *and* show straight away. For the few messages that have to be seen
--- without the user asking for them, i.e. startup.
+-- Record *and* show straight away, whatever `mirror` says. For the few messages
+-- that have to be seen without the user asking for them, i.e. startup.
 function log.echo(level: level, message: string)
-	emit(record(level, ("%s %s"):format(PREFIX, message)))
+	local item = record(level, ("%s %s"):format(PREFIX, message))
+	if not log.mirror then
+		-- `record` has already printed it otherwise; don't say it twice.
+		emit(item)
+	end
 end
 
 -- Print one stored entry. This is how the `logs` viewer writes the buffer out.
