@@ -17,6 +17,10 @@ export type meta = {
 	slug: string?,
 	version: string?,
 	remote: string?,
+	-- Which provider resolved this package (github, codeberg, wally, pesde…).
+	-- Recorded so `update` re-requests it from the same place; absent on
+	-- packages installed before providers other than GitHub existed.
+	provider: string?,
 }
 
 local ix = {}
@@ -41,11 +45,12 @@ function ix:annotate(source: Instance, name: string, packageMeta: meta?)
 		if packageMeta.owner then source:SetAttribute("CealshellOwner", packageMeta.owner) end
 		if packageMeta.version then source:SetAttribute("CealshellVersion", packageMeta.version) end
 		if packageMeta.remote then source:SetAttribute("CealshellRemote", packageMeta.remote) end
+		if packageMeta.provider then source:SetAttribute("CealshellProvider", packageMeta.provider) end
 	end
 end
 
 -- Read back the metadata stored on a tagged instance by ix:annotate.
-function ix:readAnnotation(source: Instance): { name: string, slug: string?, owner: string?, version: string?, remote: string? }?
+function ix:readAnnotation(source: Instance): { name: string, slug: string?, owner: string?, version: string?, remote: string?, provider: string? }?
 	if typeof(source) ~= "Instance" then return nil end
 	local name = source:GetAttribute("CealshellName") or source:GetAttribute("CealshellPackage")
 	if not name then return nil end
@@ -55,6 +60,7 @@ function ix:readAnnotation(source: Instance): { name: string, slug: string?, own
 		owner = source:GetAttribute("CealshellOwner") :: any,
 		version = source:GetAttribute("CealshellVersion") :: any,
 		remote = source:GetAttribute("CealshellRemote") :: any,
+		provider = source:GetAttribute("CealshellProvider") :: any,
 	}
 end
 
@@ -75,6 +81,7 @@ function ix:meta(name: string): meta?
         slug = entry:GetAttribute("slug") :: any,
         version = entry:GetAttribute("version") :: any,
         remote = entry:GetAttribute("remote") :: any,
+        provider = entry:GetAttribute("provider") :: any,
     }
 end
 
@@ -91,6 +98,7 @@ function ix:register(name: string, source: Instance, packageMeta: meta?) : Confi
         if packageMeta.slug then x:SetAttribute("slug", packageMeta.slug) end
         if packageMeta.version then x:SetAttribute("version", packageMeta.version) end
         if packageMeta.remote then x:SetAttribute("remote", packageMeta.remote) end
+        if packageMeta.provider then x:SetAttribute("provider", packageMeta.provider) end
     end
     x:SetAttribute("installedAt", os.time())
 

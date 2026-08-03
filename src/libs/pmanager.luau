@@ -3,9 +3,14 @@
 	The package manager core: install, uninstall, update and list.
 	Commands are thin wrappers around these methods.
 
-	Cealshell is a pure GitHub proxy — there is no central catalogue/keyring.
-	Every package is installed by an explicit reference and resolved on demand:
+	Cealshell is a pure proxy — there is no central catalogue/keyring. Every
+	package is installed by an explicit reference and resolved on demand:
 		GET <remote>/github/<owner>:<repo>@<version>  -> install payload
+
+	The same shape serves package registries, which additionally resolve the
+	package's dependency graph before returning it:
+		GET <remote>/wally/<scope>:<name>@<range>
+		GET <remote>/pesde/<scope>:<name>@<range>
 ]]
 
 local libs = script.Parent
@@ -56,6 +61,8 @@ end
 -- Parse a `[remote/][provider/]owner:repo[@version]` reference for the proxy.
 --   janisfox:marble                      -> github, latest, configured remote
 --   github/janisfox:marble@1.0.0         -> provider github, 1.0.0
+--   wally/sleitnick:component@^2         -> the Wally registry, semver range
+--   pesde/jiwonz:signal                  -> the pesde registry, latest
 --   cshl.xlch.dev/janisfox:marble        -> one-off remote https://cshl.xlch.dev
 --   cshl.xlch.dev/github/janisfox:marble -> one-off remote + explicit provider
 --   https://host:8080/janisfox:marble    -> one-off remote with explicit scheme
@@ -157,6 +164,7 @@ local function executeInstall(toInstall: { any }, targetFolder: Instance, intoSe
 			slug = pkg.slug,
 			version = pkg.version,
 			remote = pkg.remote,
+			provider = pkg.provider,
 		}
 		if ix and source then
 			ix:register(pkg.name, source, meta)
@@ -258,7 +266,13 @@ function pmanager:install(opts: { shared: boolean?, into: Instance?, yes: boolea
 			slug = (data.package and data.package.slug) or proxyRef.repo:lower(),
 			owner = (data.package and data.package.owner) or proxyRef.owner,
 			remote = remote,
+			-- Recorded so `update` re-resolves through the same provider; a
+			-- wally package must not be looked up on GitHub later.
+			provider = (data.package and data.package.provider) or proxyRef.provider,
 			version = (data.package and data.package.version) or proxyRef.version,
+			-- Registry packages (wally/pesde) report what the dependency walk
+			-- pulled in; source providers omit this entirely.
+			dependencies = data.dependencies,
 			data = data,
 		})
 	end
@@ -272,7 +286,7 @@ function pmanager:install(opts: { shared: boolean?, into: Instance?, yes: boolea
 		if proxyRef then
 			addFromProxy(proxyRef, reference)
 		else
-			log.warn(("Invalid reference '%s'. Use owner:repo[@version], e.g. 'janis:signal'."):format(reference))
+			log.warn(("Invalid reference '%s'. Use owner:repo[@version], e.g. 'janis:signal' or 'wally/sleitnick:component'."):format(reference))
 		end
 	end
 
@@ -286,6 +300,13 @@ function pmanager:install(opts: { shared: boolean?, into: Instance?, yes: boolea
 	for _, pkg in toInstall do
 		local count = if pkg.data.instances then #pkg.data.instances else 0
 		log.line(("  - %s (%d instance%s)"):format(pkg.name, count, if count == 1 then "" else "s"))
+		-- Registry packages bring their dependency graph with them; list it so
+		-- the confirmation prompt shows everything that is about to be added.
+		if pkg.dependencies then
+			for _, dep in pkg.dependencies do
+				log.line(("      + %s/%s@%s"):format(dep.owner, dep.name, dep.version))
+			end
+		end
 	end
 	log.line()
 
@@ -388,10 +409,14 @@ function pmanager:update(opts: { shared: boolean?, all: boolean?, yes: boolean? 
 			end
 
 			local installedVersion = entry:GetAttribute("version")
+			-- Re-resolve through the provider the package came from, and by the
+			-- slug it was published under: registry package names are lowercase
+			-- while the installed instance is capitalised ('component' vs
+			-- 'Component'), so `name` is not a valid lookup key there.
 			local payload, remote = fetchProxyPayload({
-				provider = "github",
+				provider = entry:GetAttribute("provider"),
 				owner = owner,
-				repo = name,
+				repo = slug,
 				version = "latest",
 				remote = entry:GetAttribute("remote"),
 			})
@@ -403,6 +428,7 @@ function pmanager:update(opts: { shared: boolean?, all: boolean?, yes: boolean? 
 					slug = slug,
 					owner = owner,
 					remote = remote,
+					provider = entry:GetAttribute("provider"),
 					data = payload,
 					from = installedVersion or "?",
 					to = latest,
@@ -428,9 +454,9 @@ function pmanager:update(opts: { shared: boolean?, all: boolean?, yes: boolean? 
 		end
 
 		local payload, remote = fetchProxyPayload({
-			provider = "github",
+			provider = ann.provider,
 			owner = ann.owner,
-			repo = ann.name,
+			repo = slug,
 			version = "latest",
 			remote = ann.remote,
 		})
@@ -443,6 +469,7 @@ function pmanager:update(opts: { shared: boolean?, all: boolean?, yes: boolean? 
 				slug = slug,
 				owner = ann.owner,
 				remote = remote,
+				provider = ann.provider,
 				data = payload,
 				from = ann.version or "?",
 				to = latest,
@@ -469,9 +496,9 @@ function pmanager:update(opts: { shared: boolean?, all: boolean?, yes: boolean? 
 			local data = item.data
 			if not data and item.owner then
 				data = fetchProxyPayload({
-					provider = "github",
+					provider = item.provider,
 					owner = item.owner,
-					repo = item.name,
+					repo = item.slug or item.name,
 					version = "latest",
 					remote = item.remote,
 				})
@@ -486,6 +513,7 @@ function pmanager:update(opts: { shared: boolean?, all: boolean?, yes: boolean? 
 				slug = item.slug,
 				version = (data.package and data.package.version) or item.to,
 				remote = item.remote,
+				provider = item.provider,
 			}
 
 			if item.standalone then

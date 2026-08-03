@@ -2,7 +2,7 @@ return {
     name = "about",
     args = nil,
     callback = function()
-        print("cealshell() 2026 ©")
+        print("cealshell() 2026 MIT ©")
 		print("------------")
 		print("developed by janis")
 		print("roblox: @the_h0lysandwich")
