@@ -1,8 +1,10 @@
+local log = require(script.Parent:FindFirstChild("log"))
+
 local submodules = {}
 local folder = script.Parent.Parent:FindFirstChild("submodules")
 
 if not folder then
-    warn("[Cealshell] Submodules folder not found. Creating placeholder...")
+    log.warn("Submodules folder not found. Creating placeholder...")
     folder = Instance.new("Folder")
     folder.Name = "submodules"
 end
@@ -180,7 +182,7 @@ function submodules.new(key: string, source: string) : submodule|nil
 
     local identificator = "--@submodule"
     if source:sub(1, #identificator) ~= identificator then
-        warn(("[Cealshell] Submodule '%s' has invalid syntax. (Missing --@submodule operator at first line)"):format(key))
+        log.warn(("Submodule '%s' has invalid syntax. (Missing --@submodule operator at first line)"):format(key))
     end
 
     self.key = key
@@ -197,7 +199,7 @@ function submodules:load()
 
     local identificator = "--@submodule"
     if initialSource:sub(1, #identificator) ~= identificator then
-        warn(("[Cealshell] Submodule '%s' has invalid syntax. (Missing --@submodule operator at first line)"))
+        log.warn(("Submodule '%s' has invalid syntax. (Missing --@submodule operator at first line)"):format(self.key))
     end
 
     --[[

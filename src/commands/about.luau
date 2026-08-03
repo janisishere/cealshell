@@ -1,14 +1,17 @@
+local libs = script.Parent.Parent.libs
+local log = require(libs.log)
+
 return {
     name = "about",
     args = nil,
     callback = function()
-        print("cealshell() 2026 MIT ©")
-		print("------------")
-		print("developed by janis")
-		print("roblox: @the_h0lysandwich")
-		print("discord: @_jxnis_")
-		print("------------")
-		print("discord: cealshell.dev/discord")
+        log.line("cealshell() 2026 MIT ©")
+		log.line("------------")
+		log.line("developed by janis")
+		log.line("roblox: @the_h0lysandwich")
+		log.line("discord: @_jxnis_")
+		log.line("------------")
+		log.line("discord: cealshell.dev/discord")
     end,
     description = "Credits & Contacts for Cealshell.",
     manual = nil,

@@ -35,6 +35,8 @@ function reg:register(
 		manual = manual,
 		signer = signer,
 		aliases = {},
+		-- Opt-out of invocation recording; set from the module's `silent` field.
+		silent = false,
 	}
 
 	-- Add one or more aliases. Stored as a plain de-duplicated array so that
@@ -70,6 +72,15 @@ end
 -- Dispatch a command by name/alias with its raw token list.
 function reg:call(command: string, tokens: { string })
 	local entry = reg:resolve(command)
+
+	-- Output is saved rather than printed, so record what was run: a dump then
+	-- reads as a session instead of a wall of context-free lines. `silent`
+	-- commands (the log viewer) stay out of it — they'd only ever show
+	-- themselves back.
+	if not entry or not entry.silent then
+		log.command((("%s %s"):format(command, table.concat(tokens, " "))):match("^%s*(.-)%s*$"))
+	end
+
 	if not entry then
 		log.error(("Unknown command '%s'. Type '--c help' for a list."):format(tostring(command)))
 		return

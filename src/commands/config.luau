@@ -42,6 +42,11 @@ return {
 		if value ~= nil then
 			local coerced = coerce(value)
 			plugin:SetSetting(key, coerced)
+			-- Mirroring is read once at load, so apply it here too rather than
+			-- making the user reload to see the setting take effect.
+			if key == "cealshell:log_mirror" then
+				log.setMirror(coerced == true)
+			end
 			log.ok(("Set '%s' = %s (%s)."):format(key, tostring(coerced), typeof(coerced)))
 		else
 			log.info(("%s = %s"):format(key, tostring(plugin:GetSetting(key))))

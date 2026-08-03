@@ -1,6 +1,9 @@
 --// Services
 local HttpService = game:GetService("HttpService")
 
+--// Modules
+local log = require(script.Parent:FindFirstChild("log"))
+
 --// Local Functions
 local ENUM_PROPERTY_MAP = {
     RunContext = "RunContext",
@@ -86,7 +89,7 @@ function packager:retrieve(address: string)
         return HttpService:GetAsync(address)
     end)
     if not success then 
-        warn("[Packager] Failed to retrieve: " .. tostring(data))
+        log.error("Failed to retrieve: " .. tostring(data))
         return nil 
     end
     return data
@@ -94,7 +97,7 @@ end
 
 function packager:build(package: {instances: {}}, parent: Instance)
     if not package or not package.instances or #package.instances == 0 then
-        warn("Invalid package data - no instances found")
+        log.error("Invalid package data - no instances found")
         return
     end
     

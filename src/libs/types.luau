@@ -17,6 +17,8 @@ export type command = {
 	manual: manual?,
 	signer: string?,
 	aliases: { string },
+	-- Keep this command's own invocations out of the saved log.
+	silent: boolean,
 	alias: (self: command, new: string | { string }) -> (),
 }
 

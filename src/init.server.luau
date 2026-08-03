@@ -76,6 +76,10 @@ if plugin:GetSetting("cealshell:no_local_warning") == nil then
 	plugin:SetSetting("cealshell:no_local_warning", false)
 end
 
+-- Command output is saved, not printed (see libs/log). Mirroring puts it back in
+-- the Output window as well; the setting is owned by `logs mirror on|off`.
+log.setMirror(plugin:GetSetting("cealshell:log_mirror") == true)
+
 -- Delete legacy settings
 if plugin:GetSetting("cealshell:remotes") ~= nil then
 	plugin:SetSetting("cealshell:remotes", nil)
@@ -99,6 +103,8 @@ local function iterate(folder: Instance)
 		if cmd.alias and typeof(cmd.alias) == "table" then
 			r:alias(cmd.alias)
 		end
+		-- The log viewer opts out of being written into the log it prints.
+		r.silent = cmd.silent == true
 	end
 end
 iterate(cmds)
@@ -110,7 +116,8 @@ iterate(cmds)
 -- usable without touching the command bar.
 --
 -- Palette actions run with the Output window out of sight, so every one of them
--- reports back *into* the palette (see `feedback`) instead of only printing.
+-- reports back *into* the palette (see `feedback`). The full detail is saved by
+-- `libs/log` either way and readable from the palette's own "Logs" entry.
 local COMMANDLE_API = "commandle_api"
 
 -- The palette is still animating (and, after a prompt, still in input mode) at
@@ -142,7 +149,7 @@ local function setupCommandle(api: Instance)
 
 	-- Show a result as a read-only list in the palette: selecting any line (or
 	-- pressing Escape) returns to where the user was. The commands themselves
-	-- still log the full detail to Output; this is the short version.
+	-- save the full detail; this is the short version.
 	local function feedback(title: string, lines: { string }?)
 		local entries = { { title = title, callback = goBack } }
 		for _, line in lines or {} do
@@ -178,11 +185,11 @@ local function setupCommandle(api: Instance)
 		task.delay(FEEDBACK_DELAY, function()
 			pushRequest:Fire({
 				{
-					title = ("Confirm pending %s — the full plan is in the Output window"):format(kind),
+					title = ("Confirm pending %s — the full plan is under 'cealshell: Logs'"):format(kind),
 					callback = function()
 						task.spawn(function()
 							pmanager:confirm()
-							feedback(("The %s finished — see the Output window."):format(kind))
+							feedback(("The %s finished — pick 'cealshell: Logs' for details."):format(kind))
 						end)
 					end,
 				},
@@ -217,7 +224,7 @@ local function setupCommandle(api: Instance)
 				table.insert(tokens, flag)
 			end
 			dispatch("install", tokens, function()
-				reportPending("Nothing to install — see the Output window.")
+				reportPending("Nothing to install — pick 'cealshell: Logs' for details.")
 			end)
 		end)
 	end
@@ -234,7 +241,7 @@ local function setupCommandle(api: Instance)
 							table.insert(tokens, "-s")
 						end
 						dispatch("remove", tokens, function()
-							reportPending(("'%s' could not be removed — see the Output window."):format(name))
+							reportPending(("'%s' could not be removed — pick 'cealshell: Logs' for details."):format(name))
 						end)
 					end,
 				})
@@ -264,6 +271,52 @@ local function setupCommandle(api: Instance)
 			end
 		end
 		feedback("Installed packages", lines)
+	end
+
+	-- The palette's window into the saved output. Only the tail fits comfortably
+	-- in a list, so this shows the newest lines; `--c logs -a` has the rest.
+	local LOG_TAIL = 40
+	local LOG_WIDTH = 160
+
+	local function showLogs()
+		local total = log.count()
+		if total == 0 then
+			feedback("No saved output yet — run a command first.")
+			return
+		end
+
+		local entries = {
+			{
+				title = ("Cealshell logs — newest %d of %d line%s"):format(
+					math.min(LOG_TAIL, total),
+					total,
+					if total == 1 then "" else "s"
+				),
+				callback = goBack,
+			},
+		}
+
+		-- Newest first: the palette shows the top of the list without scrolling,
+		-- which is where the line you just caused is.
+		local tail = log.recent(LOG_TAIL)
+		for i = #tail, 1, -1 do
+			local line = log.format(tail[i])
+			if #line > LOG_WIDTH then
+				line = line:sub(1, LOG_WIDTH - 1) .. "…"
+			end
+			table.insert(entries, { title = "   " .. line, callback = goBack })
+		end
+
+		table.insert(entries, {
+			title = "Clear saved logs",
+			callback = function()
+				local removed = log.clear()
+				feedback(("Cleared %d saved line%s."):format(removed, if removed == 1 then "" else "s"))
+			end,
+		})
+		table.insert(entries, { title = "Return", callback = goBack })
+
+		pushRequest:Fire(entries)
 	end
 
 	-- The registry already carries every command's description + manual, so the
@@ -326,7 +379,7 @@ local function setupCommandle(api: Instance)
 				return
 			end
 			dispatch(command, tokens, function()
-				reportPending(("Ran '%s' — see the Output window."):format(command))
+				reportPending(("Ran '%s' — pick 'cealshell: Logs' for details."):format(command))
 			end)
 		end)
 	end
@@ -359,6 +412,7 @@ local function setupCommandle(api: Instance)
 			("Packages: %d server, %d shared"):format(#server, #shared),
 			("Pending operation: %s"):format(pmanager:pending() or "none"),
 			("Advanced mode: %s"):format(if plugin:GetSetting("cealshell:advanced") == true then "on" else "off"),
+			("Saved log lines: %d"):format(log.count()),
 		})
 	end
 
@@ -385,7 +439,7 @@ local function setupCommandle(api: Instance)
 			title = "cealshell: Update All Packages",
 			callback = function()
 				dispatch("update", { "-a" }, function()
-					reportPending("No updates available — see the Output window.")
+					reportPending("No updates available — pick 'cealshell: Logs' for details.")
 				end)
 			end,
 		},
@@ -397,6 +451,7 @@ local function setupCommandle(api: Instance)
 				reportPending("No pending operation.")
 			end,
 		},
+		{ title = "cealshell: Logs", callback = showLogs },
 		{ title = "cealshell: Set Remote", callback = setRemote },
 		{ title = "cealshell: Run Command", callback = runCommand },
 		{ title = "cealshell: Commands & Manuals", callback = browseCommands },
@@ -425,7 +480,12 @@ for _, child in StudioService:GetChildren() do
 end
 
 --
-print("[Cealshell] Loaded", VERSION, "in", math.floor((tick() - start)*10^3) .."ms")
+-- The two lines below are the only output Cealshell puts in the Output window
+-- unprompted: everything a command produces is saved and shown by `--c logs`.
+log.echo("info", ("Loaded %s in %dms — command output is saved; run '--c logs' to read it."):format(
+	VERSION,
+	math.floor((tick() - start) * 10 ^ 3)
+))
 if (string.find(plugin.Name, ".rbxm") or string.find(plugin.Name, ".lua")) and plugin:GetSetting("cealshell:no_local_warning") == false then
-	warn("[Cealshell] WARNING: Cealshell is running on a local plugin, which can correlate with the official plugin from the marketplace.\nIf you aren't using the marketplace version, use `--c config cealshell:no_local_warning true` to hide this for future startups.\n(Keep in mind that you have to rerun this every reinstallation)")
+	log.echo("warn", "WARNING: Cealshell is running on a local plugin, which can correlate with the official plugin from the marketplace.\nIf you aren't using the marketplace version, use `--c config cealshell:no_local_warning true` to hide this for future startups.\n(Keep in mind that you have to rerun this every reinstallation)")
 end
