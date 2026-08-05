@@ -63,9 +63,11 @@ return {
             )
             plugin:SetSetting("cealshell:updatr_key", "")
             print("Successfully logged out.")
-        elseif sub == "force" then
+        elseif sub == "forcekey" then
             local value = p:arg(2)
             plugin:SetSetting("cealshell:updatr_key", value)
+            plugin:SetSetting("cealshell:updatr_awaiting", false)
+            plugin:SetSetting("cealshell:updatr_session", "")   
         elseif sub == "hardreset" then
             plugin:SetSetting("cealshell:updatr_key", "")
             plugin:SetSetting("cealshell:updatr_session", "")
@@ -83,7 +85,7 @@ return {
 		"Subcommands:",
 		"  login              # prompts a log in",
 		"  logout             # deletes your current api key/session",
-		"  force <new key>    # forces a new key",
+		"  forcekey <new key> # forces a new key",
         "  hardreset          # fully resets all updatr config keys"
 	},
 	signer = "cealshell",
