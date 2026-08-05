@@ -49,8 +49,9 @@ return {
                 HttpService:PostAsync(
                     "https://updatr.merithic.com/api/v1/authorize-session", 
                     session,
-                    Enum.HttpContentType.TextPlain
+                    Enum.HttpContentType.TextPlain -- somewhere i gotta add uid too bruh
                 )
+                print("Visit Updatr's site to complete the verification: ...")
             end
         elseif sub == "logout" then
             HttpService:PostAsync(
