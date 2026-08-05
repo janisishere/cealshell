@@ -84,9 +84,9 @@ function packager:proxyUrl(owner: string, repo: string, version: string?, remote
     return ("%s/%s/%s:%s@%s"):format(remoteUrl, provider or "github", owner, repo, version or "latest")
 end
 
-function packager:retrieve(address: string)
+function packager:retrieve(address: string, headers: {string})
     local success, data = pcall(function() 
-        return HttpService:GetAsync(address)
+        return HttpService:GetAsync(address, true, table.unpack(headers or {}))
     end)
     if not success then 
         log.error("Failed to retrieve: " .. tostring(data))

@@ -144,8 +144,20 @@ local function fetchProxyPayload(
 	ref: { owner: string, repo: string, version: string, provider: string?, remote: string? }
 ): (any?, string?)
 	local remote = ref.remote or configuredRemote()
-	local url = packager:proxyUrl(ref.owner, ref.repo, ref.version, remote, ref.provider)
-	local data = decodeEnvelope(packager:retrieve(url))
+	local url
+	local authorization: string?
+	if ref.provider == "updatr" then
+		local key: string = plugin:GetSetting("cealshell:updatr_key")
+		if not key or (key):len() < 32 then
+			warn("Invalid Updatr API Key, skipping package.\nDid you make sure to authorize your session?")
+			return nil
+		end
+		authorization = key
+		url = "https://updatr.merithic.com/api/jsondownload/"..ref.owner.."/"..ref.repo.."/"..ref.version
+	else
+		url = packager:proxyUrl(ref.owner, ref.repo, ref.version, remote, ref.provider)
+	end
+	local data = decodeEnvelope(packager:retrieve(url, {authorization}))
 	if data then
 		return data, remote
 	end

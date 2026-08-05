@@ -16,7 +16,7 @@ Website: https://cealshell.dev/
 local start = tick()
 --
 
-local VERSION = "v2.2"
+local VERSION = "dev v2.3"
 
 --// Services
 local LogService = game:GetService("LogService")
