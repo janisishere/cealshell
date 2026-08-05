@@ -12,13 +12,14 @@ return {
 		local sub: string = p:arg(1)
         if sub == "login" then
             local k = plugin:GetSetting("cealshell:updatr_key")
-            if type(k) ~= "string" or (k):len() < 32 then
+            if (k):len() > 32 then
                 warn("A key is already set, please log out of your previous session before making a new one!")
                 return
             end
             if plugin:GetSetting("cealshell:updatr_awaiting") then
+                local session = plugin:GetSetting("cealshell:updatr_session")
                 local ok, res = pcall(function(...)
-                    return HttpService:GetAsync("https://updatr.merithic.com/api/v1/session-poll", true, "Authorization: Bearer "..plugin:GetSetting("cealshell:updatr_session"))
+                    return HttpService:GetAsync("https://updatr.merithic.com/api/v1/session-poll", true, "Authorization: Bearer "..session)
                 end)
                 if not ok then
                     warn("Failed poll:", res) 
@@ -26,7 +27,7 @@ return {
                 end
                 local res_t = HttpService:JSONDecode(res)
                 if res_t.status == "pending" then
-                    warn("Your authorization is still pending.\nIf you cannot find a authorization request try either refreshing the website or forcing a reset on the session (then prompt another login): `--c updatr hardreset`.")
+                    warn("Your authorization is still pending.\nIf you cannot find a authorization request try either refreshing the website or forcing a reset on the session (then prompt another login): `--c updatr hardreset`.\nSession ID (do not share):", session)
                     return
                 elseif res_t.status == "authorized" then
                     if not res_t.key then
@@ -43,7 +44,7 @@ return {
                     warn("Invalid server response.")
                 end
             else
-                local session = HttpService:GenerateGUID(false):gsub("-", "")
+                local session = (HttpService:GenerateGUID(false):gsub("-", ""))
                 plugin:SetSetting("cealshell:updatr_session", session)
                 plugin:SetSetting("cealshell:updatr_awaiting", true)
                 HttpService:PostAsync(
@@ -51,7 +52,7 @@ return {
                     session,
                     Enum.HttpContentType.TextPlain -- somewhere i gotta add uid too bruh
                 )
-                print("Visit Updatr's site to complete the verification: ...")
+                warn("Visit Updatr's site to complete the verification: ...")
             end
         elseif sub == "logout" then
             HttpService:PostAsync(
