@@ -153,11 +153,11 @@ local function fetchProxyPayload(
 			return nil
 		end
 		authorization = key
-		url = "https://updatr.merithic.com/api/jsondownload/"..ref.owner.."/"..ref.repo.."/"..ref.version
+		url = "https://updatr.merithic.com/v1/library/download/"..ref.owner.."/"..ref.repo.."/"..ref.version
 	else
 		url = packager:proxyUrl(ref.owner, ref.repo, ref.version, remote, ref.provider)
 	end
-	local data = decodeEnvelope(packager:retrieve(url, {authorization}))
+	local data = decodeEnvelope(packager:retrieve(url, {Authorization=authorization}))
 	if data then
 		return data, remote
 	end
